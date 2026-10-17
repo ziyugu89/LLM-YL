@@ -8,6 +8,7 @@ import deepClone from 'lodash.clonedeep'
 const localSetting = getLocalSetting(true)
 const customTitlesStr = sessionStorage.getItem(process.env.VUE_APP_TBAS_TITLES_KEY)
 const customTitles = (customTitlesStr && JSON.parse(customTitlesStr)) || []
+const saved = localSetting || {}
 
 export default {
   namespaced: true,
@@ -20,7 +21,8 @@ export default {
     activatedFirst: undefined,
     customTitles,
     ...config,
-    ...localSetting
+    ...saved,
+    animate: { disabled: true, name: 'fade', direction: 'default' }
   },
   getters: {
     menuData(state, getters, rootState) {

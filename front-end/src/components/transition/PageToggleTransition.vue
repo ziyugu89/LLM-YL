@@ -79,15 +79,10 @@
 </script>
 
 <style lang="less">
-  .page-toggle-enter-active{
-    position: absolute !important;
-    animation-duration: 0.8s !important;
-    width: calc(100%) !important;
-  }
+  .page-toggle-enter-active,
   .page-toggle-leave-active{
-    position: absolute !important;
-    animation-duration: 0.8s !important;
-    width: calc(100%) !important;
+    position: static !important;
+    animation: none !important;
   }
   .page-toggle-enter{
   }

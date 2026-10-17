@@ -5,7 +5,7 @@ module.exports = {
       text2: '您好，我是医院智能助手，请问有什么可以帮您？',
       text3: '正在思考中...',
       button: '发送',
-      useAgent: '启用智能代理'
+      useAgent: '深入检索'
     },
     US: {
       text1: 'Please enter your question...',

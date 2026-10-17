@@ -1,7 +1,7 @@
 module.exports = {
   messages: {
     CN: {
-      column1:'编号',
+      column1:'就诊编号',
       column2:'姓名',
       column3:'治疗医生',
       column4:'创建时间',

@@ -1,5 +1,5 @@
 <template>
-  <page-toggle-transition :disabled="animate.disabled" :animate="animate.name" :direction="animate.direction">
+  <page-toggle-transition :disabled="true">
     <router-view />
   </page-toggle-transition>
 </template>

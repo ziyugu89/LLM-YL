@@ -35,8 +35,30 @@ const options = {
           component: () => import('@/pages/dashboard/workplace'),
         },
         {
+          path: 'hospital',
+          name: '医院实时',
+          meta: {
+            icon: 'profile',
+            authority: {
+              role: ['admin', 'use', 'doctor']
+            },
+          },
+          component: () => import('@/pages/hospital'),
+        },
+        {
+          path: 'guide',
+          name: '就诊引导',
+          meta: {
+            icon: 'environment',
+            authority: {
+              role: ['admin', 'use', 'doctor']
+            },
+          },
+          component: () => import('@/pages/guide'),
+        },
+        {
           path: 'llm',
-          name: '智能问诊',
+          name: '智能导诊',
           meta: {
             icon: 'robot',
             authority: {
@@ -75,6 +97,17 @@ const options = {
             },
           },
           component: () => import('@/pages/imgbh/index'),
+        },
+        {
+          path: 'patients',
+          name: '患者查询',
+          meta: {
+            icon: 'search',
+            authority: {
+              role: ['admin', 'doctor']
+            },
+          },
+          component: () => import('@/pages/patients'),
         },
         {
           path: 'userSettings',

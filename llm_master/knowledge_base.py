@@ -9,13 +9,15 @@ from langchain_community.vectorstores.utils import filter_complex_metadata
 
 load_dotenv()
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY")
-os.environ["DASHSCOPE_API_KEY"] = DASHSCOPE_API_KEY
+if DASHSCOPE_API_KEY:
+    os.environ["DASHSCOPE_API_KEY"] = DASHSCOPE_API_KEY
 
-try:
-    embeddings = DashScopeEmbeddings(model="text-embedding-v1")
-except Exception as e:
-    print(f"DashScope 嵌入模型初始化失败: {e}")
-    embeddings = None
+embeddings = None
+if DASHSCOPE_API_KEY:
+    try:
+        embeddings = DashScopeEmbeddings(model="text-embedding-v1")
+    except Exception as e:
+        print(f"DashScope 嵌入模型初始化失败: {e}")
 
 
 def build_vectorstore(file_path: str,
@@ -84,3 +86,47 @@ def build_vectorstore(file_path: str,
     except Exception as e:
         print(f"创建向量存储失败: {e}")
         return None, None
+
+
+def overlap(query, text):
+    """用二字片段衡量问题和资料的字面重合，用来补向量检索的漏检。"""
+    compact = "".join(str(query or "").split())
+    if len(compact) < 2 or not text:
+        return 0.0
+    grams = {compact[index:index + 2] for index in range(len(compact) - 1)}
+    return sum(gram in text for gram in grams) / len(grams)
+
+
+def rerank(query, hits):
+    blended = []
+    for hit in hits:
+        vector = 0.0 if hit.get("score") is None else float(hit["score"])
+        score = vector * 0.4 + overlap(query, hit.get("text") or "") * 0.6
+        blended.append({"text": hit["text"], "score": round(score, 3)})
+    blended.sort(key=lambda item: item["score"], reverse=True)
+    return blended
+
+
+def search(vectorstore, query, k=3):
+    """按相关度检索。分数过低的片段丢掉，避免把不相关的资料送进回答。"""
+    if vectorstore is None or not str(query or "").strip():
+        return []
+    try:
+        pairs = vectorstore.similarity_search_with_relevance_scores(query, k=k)
+        ranked = []
+        for doc, score in pairs:
+            text = (doc.page_content or "").strip()
+            if text:
+                ranked.append((text, None if score is None else float(score)))
+        hits = rerank(query, [{"text": text, "score": score} for text, score in ranked])
+        strong = [item for item in hits if item["score"] >= 0.2]
+        return strong or hits[:1]
+    except Exception as error:
+        print(f"带分数检索失败，改用普通检索: {error}")
+    try:
+        docs = vectorstore.similarity_search(query, k=k)
+    except Exception as error:
+        print(f"检索失败: {error}")
+        return []
+    hits = [{"text": (doc.page_content or "").strip(), "score": None} for doc in docs if (doc.page_content or "").strip()]
+    return rerank(query, hits)

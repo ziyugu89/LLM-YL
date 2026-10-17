@@ -10,6 +10,7 @@ import { mapState, mapMutations } from "vuex";
 import themeUtil from "@/utils/themeUtil";
 import { getI18nKey } from "@/utils/routerUtil";
 import { getmessage } from "@/services/userSettings";
+import { checkAuthorization } from "@/utils/request";
 
 export default {
   name: "App",
@@ -23,16 +24,16 @@ export default {
     this.setLanguage(this.lang);
     enquireScreen((isMobile) => this.setDevice(isMobile));
 
-    setInterval(() =>{
-      getmessage().then(({data}) => {
-        if(document.location.hash === "#/login")return;
-        if(data.data !== ""){
+    setInterval(() => {
+      if (this.$route.path === "/login" || !checkAuthorization()) return;
+      getmessage().then(({ data }) => {
+        if (data.data !== "") {
           this.$notification.info({
-            message: '提醒',
+            message: "提醒",
             description: data.data,
           });
         }
-      })
+      });
     }, 1000 * 10)
   },
   mounted() {

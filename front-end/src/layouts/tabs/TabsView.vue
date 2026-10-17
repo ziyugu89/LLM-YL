@@ -11,7 +11,7 @@
         @contextmenu="onContextmenu"
     />
     <div :class="['tabs-view-content', layout, pageWidth]" :style="`margin-top: ${multiPage ? -24 : 0}px`">
-      <page-toggle-transition :disabled="animate.disabled" :animate="animate.name" :direction="animate.direction">
+      <page-toggle-transition :disabled="true">
         <a-keep-alive :exclude-keys="excludeKeys" v-if="multiPage && cachePage" v-model="clearCaches">
           <router-view v-if="!refreshing" ref="tabContent" :key="$route.fullPath" />
         </a-keep-alive>

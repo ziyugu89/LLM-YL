@@ -220,7 +220,8 @@ export default {
       columns: [
         {
           title: this.$t('column1'),
-          dataIndex: "bingid",
+          dataIndex: "pcode",
+          customRender: (text, row) => text || row.bingid,
         },
         {
           title: this.$t('column2'),
@@ -255,13 +256,17 @@ export default {
   },
   created() {
     this.getList();
+    this.openFromRoute();
   },
   watch: {
-      '$i18n.locale': {
+    "$i18n.locale": {
       immediate: true,
       handler() {
         this.updateColumns();
       },
+    },
+    "$route.query.panel"() {
+      this.openFromRoute();
     },
   },
   methods: {
@@ -297,7 +302,7 @@ export default {
         value === ""
           ? this.dataSource
           : newArr.filter((d) => {
-              if (d.bingid == value || d.name == value) {
+              if (d.bingid == value || d.pcode == value || d.name == value) {
                 return true;
               } else {
                 return false;
@@ -308,10 +313,6 @@ export default {
       e.preventDefault();
       this.addMessage.form.validateFields((err, values) => {
         if (!err) {
-          console.log(values);
-          values.day.map((d) => {
-            return d.format("YYYY-MM-DD");
-          });
           // 创建一个空数组来存储区间内的所有日期
           const dateRange = [];
           // 使用一个循环来生成每个日期
@@ -345,7 +346,8 @@ export default {
       this.columns = [
         {
           title: this.$t('column1'),
-          dataIndex: "bingid",
+          dataIndex: "pcode",
+          customRender: (text, row) => text || row.bingid,
         },
         {
           title: this.$t('column2'),
@@ -372,9 +374,11 @@ export default {
         },
       ];
     },
-        created() {
-      this.getList();
-      this.updateColumns();
+        openFromRoute() {
+      if (this.$route.query.panel === "remind") {
+        this.addUserData.show = false;
+        this.addMessage.show = true;
+      }
     },
   },
 };

@@ -6,7 +6,7 @@ module.exports = {
         name: '概览',
         workplace: {name: '工作台'},
       },
-      llm: {name: '智能问诊'},
+      llm: {name: '智能导诊'},
       img: {name: '建立病历'},
       imgbh:{name: '查看病历'},
       userSettings:{name: '医护管理'},
@@ -41,7 +41,7 @@ module.exports = {
         workplace: {name: '工作台'},
         
       },
-      llm: {name: '智慧問診'},
+      llm: {name: '智慧導診'},
       img: {name: '建立病歷'},
       imgbh:{name: '查看病歷'},
       userSettings:{name: '醫生管理'},

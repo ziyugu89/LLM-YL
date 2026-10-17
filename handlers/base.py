@@ -27,9 +27,9 @@ def check_sess(func):
                 sqls = tomysql()
                 # 检查token对应用户
                 sql = '''
-                    SELECT `user`.id,`user`.stime FROM `user` WHERE `user`.token='%s' AND `user`.`status`=1
+                    SELECT `user`.id,`user`.stime FROM `user` WHERE `user`.token=%s AND `user`.`status`=1
                 '''
-                rs,rf = sqls.setSql(sql%(session_id))
+                rs,rf = sqls.setSql(sql, (session_id,))
                 if rs != False and len(rf) != 0:
                     # 判断下时间是否超过
                     new_time = int(time.time())
@@ -59,9 +59,9 @@ def set_user(id):
     sqls = tomysql()
     # 更新token
     sql = '''
-        UPDATE `user` SET `token`='%s' , `stime`=%s  WHERE `id`=%s
+        UPDATE `user` SET `token`=%s , `stime`=%s  WHERE `id`=%s
     '''
-    rs,rf = sqls.setSql(sql%(token,int(time.time()),id))
+    rs,rf = sqls.setSql(sql, (token, int(time.time()), id))
     if rs != False:
         return True,token
     else:
@@ -72,9 +72,9 @@ def set_user_token(token):
     sqls = tomysql()
     # 更新token
     sql = '''
-        UPDATE `user` SET `token`='' WHERE `token`='%s'
+        UPDATE `user` SET `token`='' WHERE `token`=%s
     '''
-    rs,rf = sqls.setSql(sql%(token))
+    rs,rf = sqls.setSql(sql, (token,))
     if rs != False:
         return True
     else:

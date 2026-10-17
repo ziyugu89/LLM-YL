@@ -1,4 +1,6 @@
 <template>
+  <page-layout>
+  <a-card class="chat-card" :body-style="{ padding: '16px' }">
   <div class="chat-container">
     <div class="chat-box">
       <div
@@ -23,33 +25,47 @@
         <div class="content">
           <p v-if="!message.isHtml">{{ message.text }}</p>
           <div v-else v-html="message.text"></div>
+          <div v-if="message.actions && message.actions.length" class="jump-actions">
+            <button
+              v-for="action in message.actions"
+              :key="action.path + action.title"
+              type="button"
+              @click="openAction(action)"
+            >{{ action.title }}</button>
+          </div>
         </div>
       </div>
     </div>
     <div class="input-area">
       <div class="agent-toggle">
         <a-switch v-model="useAgent" />
-        <span>{{$t('useAgent')}}</span>
+        <span title="先检索资料。打开后会继续查，并决定要打开哪个功能。">{{$t('useAgent')}}</span>
       </div>
-      <input
-        v-model="newMessage"
-        type="text"
-        :placeholder="$t('text1')"
-        @keyup.enter="sendMessage"
-      />
-      <button @click="sendMessage">{{$t('button')}}</button>
+      <div class="composer">
+        <input
+          v-model="newMessage"
+          type="text"
+          :placeholder="$t('text1')"
+          @keyup.enter="sendMessage"
+        />
+        <button type="button" class="send-btn" @click="sendMessage">{{$t('button')}}</button>
+      </div>
     </div>
   </div>
+  </a-card>
+  </page-layout>
 </template>
 
 <script>
 import userpng from "@/assets/img/user.jpg";
 import robotjpg from "@/assets/img/robot.jpg";
+import PageLayout from "@/layouts/PageLayout";
 import { llm } from "@/services/userSettings";
 import { marked } from 'marked';
 
 export default {
   name: 'llm',
+  components: { PageLayout },
   i18n: require("./i18n"),
   data() {
     return {
@@ -57,6 +73,7 @@ export default {
       robotjpg,
       newMessage: "",
       useAgent: false,
+      sending: false,
       messages: [
         { key: 'text2', isUser: false },
       ],
@@ -79,32 +96,42 @@ export default {
         }
       });
     },
+    openAction(action) {
+      const allowed = ["/guide", "/hospital", "/img", "/imgbh", "/userSettings", "/dashboard"];
+      if (!action || allowed.indexOf(action.path) === -1) return;
+      this.$router.push({ path: action.path, query: action.query || {} });
+    },
     sendMessage() {
-      if (this.newMessage.trim() === "") return;
-      this.messages.push({ text: this.newMessage, isUser: true });
-
-      this.messages.push({ key: 'text3', isUser: false });
+      const question = this.newMessage.trim();
+      if (question === "" || this.sending) return;
+      this.sending = true;
+      this.newMessage = "";
+      this.messages.push({ text: question, isUser: true });
+      this.messages.push({ text: this.$t('text3'), isUser: false });
       llm({
-        query: this.newMessage,
-        use_agent: this.useAgent  // 添加Agent参数
+        query: question,
+        use_agent: this.useAgent
       }).then(({ data }) => {
-        // 移除数组最后一个
         this.messages.pop();
         if (data.code === 20000 && data.data && data.data.choices && data.data.choices.length > 0) {
-          let messageContent = data.data.choices[0].message.content;
-          // 渲染 Markdown 为 HTML
+          const messageContent = data.data.choices[0].message.content;
           const htmlContent = marked(messageContent);
-          // 使用 v-html 渲染
-          this.messages.push({ text: htmlContent, isUser: false, isHtml: true });
+          this.messages.push({
+            text: htmlContent,
+            isUser: false,
+            isHtml: true,
+            actions: (data.data && data.data.actions) || [],
+          });
         } else {
-          this.messages.push({ text: '查询失败', isUser: false });
+          this.messages.push({ text: (data && data.data) || '查询失败', isUser: false });
         }
-        console.log('当前消息列表:', this.messages); // 打印消息列表
       }).catch((error) => {
         console.error('请求失败:', error);
+        this.messages.pop();
         this.messages.push({ text: '请求失败，请稍后再试', isUser: false });
+      }).finally(() => {
+        this.sending = false;
       });
-      this.newMessage = "";
     },
   },
   created() {
@@ -115,21 +142,25 @@ export default {
 </script>
 
 <style scoped>
+.chat-card {
+  border-top: 3px solid #1e4636;
+}
+
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  padding: 20px;
+  height: calc(100vh - 320px);
+  min-height: 360px;
 }
 
 .chat-box {
   flex: 1;
   overflow-y: auto;
-  margin-bottom: 20px;
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
-  padding: 10px;
-  background-color: #f9f9f9;
+  margin-bottom: 16px;
+  border: 1px solid #e4ddd0;
+  border-radius: 10px;
+  padding: 16px;
+  background: #f7f3ea;
 }
 
 .message {
@@ -162,13 +193,30 @@ export default {
 }
 
 .user-message .content {
-  background-color: #1890ff;
-  color: white;
+  background: #1e4636;
+  color: #f7f3ea;
 }
 
 .bot-message .content {
-  background-color: #f0f0f0;
-  color: #333;
+  background: #fffdf8;
+  color: #1c1915;
+  border: 1px solid #e4ddd0;
+}
+
+.jump-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.jump-actions button {
+  padding: 4px 10px;
+  border: 1px solid #1e4636;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #1e4636;
+  cursor: pointer;
 }
 
 .input-area {
@@ -184,23 +232,30 @@ export default {
   margin-bottom: 5px;
 }
 
-input {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+.composer {
+  display: flex;
+  gap: 8px;
 }
 
-button {
+.composer input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #e4ddd0;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #1c1915;
+}
+
+.send-btn {
   padding: 10px 20px;
-  background-color: #1890ff;
-  color: white;
-  border: none;
-  border-radius: 4px;
+  background: #1e4636;
+  color: #f7f3ea;
+  border: 1px solid #1e4636;
+  border-radius: 8px;
   cursor: pointer;
 }
 
-button:hover {
-  background-color: #40a9ff;
+.send-btn:hover {
+  background: #163628;
 }
 </style>

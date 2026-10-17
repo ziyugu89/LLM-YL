@@ -1,38 +1,37 @@
 # -*- coding: utf-8 -*-
 #encoding:utf-8
-import sys
-import json,os,time,datetime
-from flask import Flask,url_for,request,render_template,redirect,session
-from werkzeug.utils import secure_filename
+import time
+import redis
+from flask import request
 
-from handlers import base
 from config import conf as CONF
 from utils import user
-from master import api
-import redis
+from llm_master import api
+from llm_master import hospital_feed
+
+
+def _viewer_from(info):
+    return {
+        "id": str(info[0]),
+        "name": str(info[1] or ""),
+        "roles": [str(item) for item in info[3]],
+        "pcode": str(info[5] or "") if len(info) > 5 else "",
+    }
 
 # 创建连接对象
 rds = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
-def getFun(fun):
-    ret = {
-        'code': 20001,
-        'data': ''
-    }
-    req = request.get_json()
-    try:
-        token = request.headers[CONF['TokenKey']]
-    except Exception as ex:
-        print('token error:', str(ex))
-        token = ""
-    # print(req, token)
-    # 获取用户列表
-    rs, rq = fun(req, token)
-    # print ('rf = ',rq)
-    if rs == True:
-        ret['code'] = 20000
-        ret['data'] = rq
-    else:
-        ret['data'] = rq
+
+
+def _token():
+    return request.headers.get(CONF["TokenKey"]) or ""
+
+
+def _listed(loader):
+    ret = {"code": 20001, "data": "查询失败"}
+    ok, data = loader(_token())
+    if ok:
+        ret["code"] = 20000
+    ret["data"] = data
     return ret
 
 def addbingli():
@@ -40,53 +39,25 @@ def addbingli():
         'code': 20000,
         'data': '添加成功'
     }
-    try:
-        token = request.headers[CONF['TokenKey']]
-    except Exception as ex:
-        print('token error:', str(ex))
-        token = ""
     req = request.get_json()
-    user.addBingli(token, req)
+    ok, message = user.addBingli(_token(), req)
+    if not ok:
+        ret['code'] = 20001
+        ret['data'] = message
     return ret
 
 def getbingli():
-    ret = {
-        'code': 20001,
-        'data': '查询失败'
-    }
-    try:
-        token = request.headers[CONF['TokenKey']]
-    except Exception as ex:
-        print('token error:', str(ex))
-        token = ""
-    rq,rf = user.getBingli(token)
-    if rq == True:
-        ret['code'] = 20000
-    ret['data'] = rf
-    return ret
+    return _listed(user.getBingli)
 
 def getbingliBH():
-    ret = {
-        'code': 20001,
-        'data': '查询失败'
-    }
-    try:
-        token = request.headers[CONF['TokenKey']]
-    except Exception as ex:
-        print('token error:', str(ex))
-        token = ""
-    rq,rf = user.getBingliList(token)
-    if rq == True:
-        ret['code'] = 20000
-    ret['data'] = rf
-    return ret
+    return _listed(user.getBingliList)
 def llm():
     ret = {
         'code': 20001,
         'data': '查询失败'
     }
     try:
-        token = request.headers.get(CONF['TokenKey'])
+        token = _token()
         if not token:
             print('Token is missing or invalid')
             return ret
@@ -99,27 +70,64 @@ def llm():
         use_agent = req.get('use_agent', False)  # 新增参数，决定是否使用Agent
 
         rq, rf = user.getBingliList(token)
-        if rq:
-            # print("病历信息获取成功")
-            if use_agent:
-                response_from_model = api.agent_message(req['query'], [i['text'] for i in rf['list']])
-            else:
-                response_from_model = api.message(req['query'], [i['text'] for i in rf['list']])
-            # print("模型返回的回答：", response_from_model)  # 打印模型的返回值
-            ret['code'] = 20000
-            ret['data'] = {
-                "choices": [
-                    {
-                        "message": {
-                            "content": response_from_model
-                        }
+        records = []
+        if rq and isinstance(rf, dict):
+            records = [item.get('text') or '' for item in rf.get('list') or []]
+        elif not rq:
+            ret['data'] = rf or '请重新登录'
+            return ret
+
+        role_names = []
+        viewer = None
+        known, info = user.get_user_name(token)
+        if known and info and len(info) >= 5:
+            role_names = [str(item) for item in list(info[3]) + list(info[4])]
+            viewer = _viewer_from(info)
+        response_from_model = api.answer(req['query'], records, token, use_agent, role_names, viewer)
+        ret['code'] = 20000
+        ret['data'] = {
+            "choices": [
+                {
+                    "message": {
+                        "content": response_from_model["content"]
                     }
-                ]
-            }
-        else:
-            print("病历信息获取失败:", rq, rf)
+                }
+            ],
+            "actions": response_from_model["actions"],
+        }
     except Exception as ex:
         print('Unexpected error:', str(ex))
+        ret['data'] = '暂时无法回答，请稍后再试'
+    return ret
+
+def hospital():
+    ret = {'code': 20001, 'data': '查询失败'}
+    try:
+        token = _token()
+        known, info = user.get_user_name(token)
+        if not known or not info or len(info) < 4:
+            ret['data'] = '请重新登录'
+            return ret
+        req = request.get_json() or {}
+        kind = req.get('kind') if req.get('kind') in ('slots', 'queue', 'reports') else 'slots'
+        viewer = _viewer_from(info)
+        ret['code'] = 20000
+        ret['data'] = hospital_feed.query(kind, req.get('query') or '', viewer)
+    except Exception as ex:
+        print('hospital error:', str(ex))
+        ret['data'] = '暂时无法读取医院资料'
+    return ret
+
+def guide():
+    ret = {'code': 20001, 'data': '查询失败'}
+    req = request.get_json() or {}
+    topic = req.get('topic') if req.get('topic') in ('register', 'place') else 'place'
+    try:
+        ret['code'] = 20000
+        ret['data'] = api.guide(topic, req.get('query') or '')
+    except Exception as ex:
+        print('guide error:', str(ex))
+        ret['data'] = '暂时无法查询就诊引导'
     return ret
 
 def setRedis(req):
@@ -136,17 +144,15 @@ def getRedis():
         'data': ''
     }
     
-    try:
-        token = request.headers[CONF['TokenKey']]
-    except Exception as ex:
-        print('token error:', str(ex))
-        token = ""
-    rs,use = user.get_user_name(token)
-    rq = rds.lrange(use[0], 0, -1)
+    rs, use = user.get_user_name(_token())
+    if not rs or not use:
+        ret['code'] = 20001
+        ret['data'] = '请重新登录'
+        return ret
     rdsList = []
     while rds.llen(use[0]) > 0:
         data = rds.rpop(use[0])
-        t,text = data.split('|')
+        t,text = data.split('|', 1)
         if int(time.time()) - int(t) > 0 and int(time.time()) - int(t) < 60:
             ret['code'] = 20000
             ret['data'] = text
@@ -166,6 +172,5 @@ def setmessage():
     }
     req = request.get_json()
     for item in req['times']:
-        print(item)
         setRedis({'bingid': req['bingid'], 'time': item, 'text': req['message']})
     return ret

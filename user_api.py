@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 #encoding:utf-8
-import sys
-import json,os,time,datetime
-from flask import Flask,url_for,request,render_template,redirect,session
+from flask import request
 
 from handlers import base
 from utils import user
 from config import conf as CONF
+
+_LOGIN_ROLES = {"use": "2", "doctor": "3", "admin": "1"}
 
 def login():
     # 处理跨域请求
@@ -14,18 +14,28 @@ def login():
         'code': 20000,
         'data': ''
     }
-    req = request.get_json()
-    # 判断用户名密码 获取用户ID
-    rs, rf = user.get_user(req['username'],req['password'])
-    if rs == True:
-        res, token = base.set_user(rf)
-        # 登录失败
-        if res == False:
-            ret['code'] = 20001
-        ret['data'] = {'token':token}
-    else:
+    req = request.get_json() or {}
+    wanted = str(req.get('role') or '')
+    if wanted not in _LOGIN_ROLES:
         ret['code'] = 20001
-        ret['data'] = u'用户名，密码错误'
+        ret['data'] = '请先选择患者、医生或管理员'
+        return ret
+    # 判断用户名密码 获取用户ID
+    rs, rf = user.get_user(req.get('username'), req.get('password'))
+    if rs != True:
+        ret['code'] = 20001
+        ret['data'] = '用户名或密码错误'
+        return ret
+    if _LOGIN_ROLES[wanted] not in rf["roles"].split(","):
+        ret['code'] = 20001
+        ret['data'] = '这个账号不能用所选身份登录'
+        return ret
+    res, token = base.set_user(rf["id"])
+    if res == False:
+        ret['code'] = 20001
+        ret['data'] = '登录失败'
+        return ret
+    ret['data'] = {'token': token}
     return ret
 
 def logout():
@@ -34,8 +44,6 @@ def logout():
         'data': 'success'
     }
     token = request.headers[CONF['TokenKey']]
-    print (u'注销token ： %s'%token)
-    # 清理token 注销用户
     base.set_user_token(token)
     return ret
 
@@ -47,13 +55,13 @@ def info():
     token = request.args.get("token")
     # 获取用户信息
     rs, rf = user.get_user_name(token)
-    print(rf)
     if rs == True:
         ret['code'] = 20000
         ret['data'] = {
             'id': rf[0],
             'name': rf[1],
             'roles': rf[3],# 用户角色 多种用,分割
+            'pcode': rf[5] if len(rf) > 5 else '',
             'expireAt': (int(rf[2])+CONF['userOut'])*1000,# token过期时间
             'token': token,
         }
@@ -62,15 +70,39 @@ def info():
         ret['data'] = u'获取用户信息失败。'
     return ret
 
+def profile():
+    ret = {'code': 20001, 'data': '请重新登录'}
+    token = request.headers.get(CONF['TokenKey']) or ""
+    rs, rf = user.get_user_name(token)
+    if rs == True:
+        names = {"admin": "管理员", "use": "患者", "doctor": "医生"}
+        ret['code'] = 20000
+        ret['data'] = {
+            'id': rf[0],
+            'name': rf[1],
+            'roles': rf[3],
+            'roleText': "、".join(names.get(item, item) for item in rf[3]),
+            'pcode': rf[5] if len(rf) > 5 else '',
+        }
+    return ret
+
 def getlist():
     ret = {
         'code': 20001,
         'data': ''
     }
-    req = request.get_json()
+    token = request.headers.get(CONF['TokenKey']) or ""
+    known, info = user.get_user_name(token)
+    if not known or not info or len(info) < 4:
+        ret['data'] = '请重新登录'
+        return ret
+    if 'admin' not in info[3] and 'doctor' not in info[3]:
+        ret['data'] = '当前身份不能管理人员'
+        return ret
+    req = request.get_json() or {}
+    req['viewer_roles'] = info[3]
     # 获取用户列表
     rs, rf = user.get_user_list(req)
-    print ('rf = ',rf)
     if rs == True:
         ret['code'] = 20000
         ret['data'] = rf

@@ -1,15 +1,10 @@
 # -*- coding: utf-8 -*-
 #encoding:utf-8
-import sys
-
-import json,os,time,datetime
 from handlers import base
-from config import conf as CONF
 import user_api as users
 import data_api as datas
 
-
-from flask import Flask,url_for,request,render_template,redirect,session,send_from_directory
+from flask import Flask, render_template
 from flask_cors import cross_origin
 
 app  =  Flask(__name__,static_url_path="/static")
@@ -34,6 +29,12 @@ def webapi_user_logout():
 @app.route('/webapi/user/info',methods=['GET'])
 def webapi_user_info():
     return users.info()
+
+# 当前登录身份
+@app.route('/webapi/user/profile',methods=['POST'])
+@base.check_sess
+def webapi_user_profile():
+    return users.profile()
 
 # 拉取用户列表
 @app.route('/webapi/user/getlist',methods=['POST'])
@@ -94,6 +95,18 @@ def webapi_data_getbingliBH():
 @base.check_sess
 def webapi_data_llm():
     return datas.llm()
+
+# 挂号流程和院内位置
+@app.route('/webapi/data/guide',methods=['POST'])
+@base.check_sess
+def webapi_data_guide():
+    return datas.guide()
+
+# 已导入的号源、排队和检查报告
+@app.route('/webapi/data/hospital',methods=['POST'])
+@base.check_sess
+def webapi_data_hospital():
+    return datas.hospital()
 
 # 查询病历
 @app.route('/webapi/data/setmessage',methods=['POST'])

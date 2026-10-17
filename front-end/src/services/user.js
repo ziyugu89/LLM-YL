@@ -7,10 +7,11 @@ import { request, METHOD, removeAuthorization } from '@/utils/request'
  * @param password 账户密码
  * @returns {Promise<AxiosResponse<T>>}
  */
-export async function login(name, password) {
+export async function login(name, password, role) {
   return request(LOGIN, METHOD.POST, {
     username: name,
-    password: password
+    password: password,
+    role: role
   })
 }
 
@@ -20,6 +21,10 @@ export async function login(name, password) {
  */
 export async function getInfo(token) {
   return request(GETINFO, METHOD.GET, { token })
+}
+
+export function profile() {
+  return request('/webapi/user/profile', METHOD.POST, {})
 }
 
 export async function getRoutesConfig() {

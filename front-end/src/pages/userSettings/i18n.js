@@ -9,7 +9,7 @@ module.exports = {
       message3:'请输入用户名称',
       message4:'你点击了状态栏表头',
       message5:'表格状态改变了',
-      message6:'删除账户后，账户将无法登陆及使用，是否确认删除？',
+      message6:'注销后该账号无法再登录。是否确认注销？',
       label1:'账号',
       label2:'密码',
       label3:'用户名称',
@@ -19,21 +19,25 @@ module.exports = {
       button3:'创建用户',
       button4:'修改用户',
       button5:'修改',
-      button6:'删除',
+      button6:'注销',
       success1:'成功',
       success2:'创建成功',
       success3:'修改成功',
       role1:'医生',
+      role2:'患者',
+      role3:'管理员',
       columns: {
         account: '账号',
         name: '用户名称',
+        code: '就诊编号',
+        role: '身份',
         lastLogin: '最近登录时间',
-        permission: '权限',
+        permission: '状态',
         action: '操作'
       },
       status: {
         normal: '正常',
-        unlogin: '无法登录'
+        unlogin: '已注销'
       }
     },
     HK: {

@@ -10,7 +10,7 @@ conf = {
         'local': '127.0.0.1',
         'port': 3306,
         'user': 'root',
-        'pwd': 'root123',
+        'pwd': '123456',
         'library': 'web_server',
         'printSql': False,#是否打印sql语句
         'path': r'../web_server.sql',#数据库文件路径

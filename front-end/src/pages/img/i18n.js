@@ -1,7 +1,7 @@
 module.exports = {
   messages: {
     CN: {
-      message1:'请输入病人编号',
+      message1:'请输入8位就诊编号',
       message2:'请输入姓名',
       message3:'请输入年龄',
       message4:'请输入身份证号',
@@ -9,7 +9,7 @@ module.exports = {
       message6:'请选择提醒周期',
       message7:'请选择提醒时间',
       message8:'请输入提醒信息',
-      label1:'病人编号',
+      label1:'就诊编号',
       label2:'姓名',
       label3:'性别',
       label4:'年龄',
@@ -22,7 +22,7 @@ module.exports = {
       button2:'添加病历',
       button3:'用药提醒',
       placeholder1:'请输入病人姓名或编号查询',
-      column1:'病人编号',
+      column1:'就诊编号',
       column2:'病人姓名',
       column3:'创建时间',
       column4:'性别',

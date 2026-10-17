@@ -2,8 +2,19 @@
   <page-layout>
     <a-card>
       <div>
+        <div class="desk-intro">
+          <strong>账号管理</strong>
+          <span>管理员可以新建、查询、修改和注销账号。患者会自动分配 8 位就诊编号。医生只能查询患者，不能注销账号。</span>
+        </div>
         <a-space class="operator">
           <a-button type="primary" @click="showAddUser">{{$t('button1')}}</a-button>
+          <a-input-search
+            v-model="keyword"
+            placeholder="按姓名、账号或就诊编号查询"
+            enter-button="查询"
+            style="width: 320px"
+            @search="searchUsers"
+          />
         </a-space>
         <a-modal v-model="addUserData.show" :title="$t('title1')">
           <template slot="footer">
@@ -32,9 +43,9 @@
                 style="width: 100%;"
               >
                 <a-row>
-                  <a-col :span="12">
-                    <a-checkbox value="3">{{$t('role1')}}</a-checkbox>
-                  </a-col>
+                  <a-col :span="8"><a-checkbox value="2">患者</a-checkbox></a-col>
+                  <a-col :span="8"><a-checkbox value="3">医生</a-checkbox></a-col>
+                  <a-col :span="8"><a-checkbox value="1">管理员</a-checkbox></a-col>
                 </a-row>
               </a-checkbox-group>
             </a-form-item>
@@ -67,9 +78,9 @@
                 style="width: 100%;"
               >
                 <a-row>
-                  <a-col :span="12">
-                    <a-checkbox value="3">{{$t('role1')}}</a-checkbox>
-                  </a-col>
+                  <a-col :span="8"><a-checkbox value="2">患者</a-checkbox></a-col>
+                  <a-col :span="8"><a-checkbox value="3">医生</a-checkbox></a-col>
+                  <a-col :span="8"><a-checkbox value="1">管理员</a-checkbox></a-col>
                 </a-row>
               </a-checkbox-group>
             </a-form-item>
@@ -87,9 +98,10 @@
             <a key="edit" style="margin-right: 8px" @click="handleEdit(text)">
               <a-icon type="edit"/>{{$t('button5')}}
             </a>
-            <a key="del" style="margin-right: 8px" @click="handleDelete(text)">
-              <a-icon type="delete"/>{{$t('button6')}}
+            <a v-if="text.status == 1" key="del" @click="handleDelete(text)">
+              <a-icon type="stop"/>{{$t('button6')}}
             </a>
+            <span v-else>已注销</span>
           </template>
           <template v-slot:statusTitle>
             <a-icon @click.native="onStatusTitleClick" type="info-circle" />
@@ -123,6 +135,7 @@ export default {
         total: 0,
         num: 1
       },
+      keyword: "",
       addUserData: {
         show: false,
         loading: false,
@@ -150,12 +163,21 @@ export default {
     initColumns() {
       return [
         {
+          title: this.$t('columns.code'),
+          dataIndex: 'pcode',
+          customRender: (text) => text || '—'
+        },
+        {
           title: this.$t('columns.account'),
           dataIndex: 'user'
         },
         {
           title: this.$t('columns.name'),
           dataIndex: 'name',
+        },
+        {
+          title: this.$t('columns.role'),
+          dataIndex: 'roleText',
         },
         {
           title: this.$t('columns.lastLogin'),
@@ -196,7 +218,8 @@ export default {
     },
     fetchData() {
       getList({
-        page: this.page.num
+        page: this.page.num,
+        keyword: this.keyword
       }).then(re => {
         let { data } = re;
         this.dataSource = data.data.list;
@@ -236,6 +259,10 @@ export default {
         onCancel() {},
       });
     },
+    searchUsers() {
+      this.page.num = 1
+      this.fetchData()
+    },
     showAddUser() {
       this.addUserData.show = true;
     },
@@ -244,7 +271,8 @@ export default {
         if (!err) {
           addUser(values).then(({ data }) => {
             if (data.code == 20000) {
-              this.$message.info(this.$t('success2'))
+              const pcode = data.data && data.data.pcode
+              this.$message.info(pcode ? `创建成功，就诊编号 ${pcode}` : this.$t('success2'))
               this.addUserData.show = false;
               this.fetchData()
             }
@@ -291,6 +319,16 @@ export default {
   }
   .operator {
     margin-bottom: 18px;
+  }
+  .desk-intro {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    background: #f4f8f6;
+    border-radius: 8px;
+    line-height: 1.7;
   }
   @media screen and (max-width: 900px) {
     .fold {

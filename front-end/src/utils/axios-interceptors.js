@@ -23,7 +23,7 @@ const resp401 = {
   onRejected(error, options) {
     const { message } = options
     const { response } = error
-    if (response.status === 401) {
+    if (response && response.status === 401) {
       message.error('无此权限')
     }
     return Promise.reject(error)
@@ -41,7 +41,7 @@ const resp403 = {
   onRejected(error, options) {
     const { message } = options
     const { response } = error
-    if (response.status === 403) {
+    if (response && response.status === 403) {
       message.error('请求被拒绝')
     }
     return Promise.reject(error)
@@ -51,11 +51,17 @@ const resp403 = {
 const tokenOut = {
   onFulfilled(response, options) {
     const { message, router } = options
-    if (response.data.code === 20001 && (response.data.data === '登录超时' || response.data.data === '请重新登录')) {
+    const url = response.config.url
+    // 如果是登录相关的接口，不进行 token 过期拦截
+    const isAuthEndpoint = url.indexOf('login') !== -1 || url.indexOf('/webapi/user/info') !== -1 || url.indexOf('/webapi/user/adduser') !== -1
+    
+    if (!isAuthEndpoint && response.data.code === 20001 && (response.data.data === '登录超时' || response.data.data === '请重新登录')) {
       message.error('身份信息到期，请重新登录')
-      router.push({ path: '/login' })
+      if (router.currentRoute.path !== '/login') {
+        router.push({ path: '/login' })
+      }
       return Promise.reject(new Error(response.data.data || 'Error'))
-    } else if (response.data.code === 20001) {
+    } else if (!isAuthEndpoint && response.data.code === 20001) {
       message.error(response.data.data)
       return Promise.reject(new Error(response.data.data || 'Error'))
     }
@@ -75,7 +81,9 @@ const reqCommon = {
     const { url, xsrfCookieName } = config
     if (url.indexOf('login') === -1 && url.indexOf('/webapi/user/info') === -1 && url.indexOf('/webapi/user/adduser') === -1 && xsrfCookieName && !Cookie.get(xsrfCookieName)) {
       message.warning('认证 token 已过期，请重新登录')
-      router.push({ path: '/login' })
+      if (router.currentRoute.path !== '/login') {
+        router.push({ path: '/login' })
+      }
       return Promise.reject(new Error(config.data.data || 'Error'))
     }
     return config

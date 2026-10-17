@@ -12,7 +12,7 @@
       <a-menu-divider />
       <a-menu-item @click="logout">
         <a-icon style="margin-right: 8px;" type="poweroff" />
-        <span>退出登录</span>
+        <span>注销登录</span>
       </a-menu-item>
 
       <a-modal v-model="upUserData.show" title="修改密码" forceRender>

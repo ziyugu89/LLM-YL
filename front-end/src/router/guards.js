@@ -1,9 +1,6 @@
 import {hasAuthority} from '@/utils/authority-utils'
 import {loginIgnore} from '@/router/index'
 import {checkAuthorization} from '@/utils/request'
-import NProgress from 'nprogress'
-
-NProgress.configure({ showSpinner: false })
 
 /**
  * 进度条开始
@@ -12,10 +9,6 @@ NProgress.configure({ showSpinner: false })
  * @param next
  */
 const progressStart = (to, from, next) => {
-  // start progress bar
-  if (!NProgress.isStarted()) {
-    NProgress.start()
-  }
   next()
 }
 
@@ -93,10 +86,7 @@ const redirectGuard = (to, from, next, options) => {
  * @param form
  * @param options
  */
-const progressDone = () => {
-  // finish progress bar
-  NProgress.done()
-}
+const progressDone = () => {}
 
 export default {
   beforeEach: [progressStart, loginGuard, authorityGuard, redirectGuard],

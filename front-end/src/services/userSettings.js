@@ -73,6 +73,20 @@ export function llm(data) {
     data
   )
 }
+export function hospital(data) {
+  return request(
+    '/webapi/data/hospital',
+    METHOD.POST,
+    data
+  )
+}
+export function guide(data) {
+  return request(
+    '/webapi/data/guide',
+    METHOD.POST,
+    data
+  )
+}
 // 添加提醒
 export function setmessage(data) {
   return request(
